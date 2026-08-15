@@ -1,8 +1,6 @@
 // ZeekFit 3D beta: loads the published Mixamo character and animation
-// from the GitHub release and replaces the old CSS exercise avatar.
+// and retargets the animation onto the character's actual skeleton.
 (async () => {
-  // Published release assets. Keeping these outside the main HTML lets us
-  // update the 3D trainer without rewriting the large app file.
   const CHARACTER_URL = 'https://github.com/ObikeZeek/ZeekFit/releases/download/3d-beta/Ch31_nonPBR.fbx';
   const PUSHUP_URL = 'https://github.com/ObikeZeek/ZeekFit/releases/download/3d-beta/Push.Up.1.fbx';
 
@@ -10,7 +8,8 @@
     const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js');
     const { FBXLoader } = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/FBXLoader.js');
     const { OrbitControls } = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js');
-    return { THREE, FBXLoader, OrbitControls };
+    const SkeletonUtils = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/utils/SkeletonUtils.js');
+    return { THREE, FBXLoader, OrbitControls, SkeletonUtils };
   };
 
   let libs;
@@ -21,10 +20,18 @@
     return;
   }
 
-  const { THREE, FBXLoader, OrbitControls } = libs;
+  const { THREE, FBXLoader, OrbitControls, SkeletonUtils } = libs;
   const viewers = new WeakMap();
 
-  // Create or reuse the canvas inside an exercise/session avatar panel.
+  // Find the skinned mesh that owns the character's actual skeleton.
+  const findSkin = (root) => {
+    let skin = null;
+    root.traverse((object) => {
+      if (!skin && object.isSkinnedMesh && object.skeleton) skin = object;
+    });
+    return skin;
+  };
+
   const makePanel = (modal) => {
     if (!modal) return null;
     const avatar = modal.querySelector('.avatarbox');
@@ -36,13 +43,16 @@
     if (!canvas) {
       avatar.innerHTML = '';
       avatar.style.position = 'relative';
+
       badge = document.createElement('div');
       badge.className = 'zeek3d-status';
       badge.style.cssText = 'position:absolute;z-index:2;left:12px;top:12px;background:rgba(8,9,11,.82);border:1px solid #2a2f38;padding:7px 10px;border-radius:11px;font-size:12px;color:#bfc7d2';
       badge.textContent = 'Loading 3D trainer…';
+
       canvas = document.createElement('canvas');
       canvas.className = 'zeek3d-canvas';
       canvas.style.cssText = 'width:100%;height:100%;display:block';
+
       avatar.appendChild(badge);
       avatar.appendChild(canvas);
     }
@@ -71,7 +81,7 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    const controls = new OrbitControls(camera, canvas);
+    const controls = new OrbitControls( camera, canvas );
     controls.enableDamping = true;
     controls.enablePan = false;
     controls.minDistance = 0.5;
@@ -123,6 +133,12 @@
       });
       scene.add(model);
 
+      // Find the target skeleton before applying any animation.
+      const targetSkin = findSkin(model);
+      if (!targetSkin) {
+        throw new Error('The character FBX does not contain a usable skinned mesh.');
+      }
+
       // Normalize the character to fit the existing ZeekFit exercise window.
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
@@ -145,21 +161,39 @@
         const animationModel = await loadModel(PUSHUP_URL);
         if (disposed) return;
 
+        const sourceSkin = findSkin(animationModel);
         const clip = animationModel.animations?.[0];
-        if (!clip) {
-          badge.textContent = 'Character loaded · no animation clip found';
-        } else {
-          mixer = new THREE.AnimationMixer(model);
-          currentAction = mixer.clipAction(clip);
-          currentAction.reset().setLoop(THREE.LoopRepeat, Infinity).play();
-          badge.textContent = '3D push-up trainer ready';
+
+        if (!sourceSkin || !clip) {
+          throw new Error('The push-up FBX did not contain a usable animation skeleton/clip.');
         }
+
+        // The previous version applied the raw animation clip directly to the
+        // character root. That can scramble a Mixamo rig because the clip's
+        // tracks belong to the source skeleton. Retarget the clip explicitly
+        // to the character's SkinnedMesh, then animate that target mesh.
+        const retargetedClip = SkeletonUtils.retargetClip(
+          targetSkin,
+          sourceSkin,
+          clip,
+          {
+            hip: 'mixamorigHips',
+            useFirstFramePosition: true,
+            preservePosition: true,
+            preserveHipPosition: true
+          }
+        );
+
+        mixer = new THREE.AnimationMixer(targetSkin);
+        currentAction = mixer.clipAction(retargetedClip);
+        currentAction.reset().setLoop(THREE.LoopRepeat, Infinity).play();
+        badge.textContent = '3D push-up trainer ready';
       } else {
         badge.textContent = '3D trainer loaded';
       }
     } catch (error) {
-      console.error('ZeekFit 3D asset load failed.', error);
-      badge.textContent = '3D asset could not be loaded';
+      console.error('ZeekFit 3D asset/animation load failed.', error);
+      badge.textContent = '3D animation setup failed';
     }
 
     const tick = () => {
