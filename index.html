@@ -57,31 +57,48 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0}
 .modal{position:fixed;z-index:80;inset:0;background:rgba(0,0,0,.8);display:none;align-items:flex-end}.modal.open{display:flex}
 .sheet{width:min(760px,100%);max-height:94vh;overflow:auto;background:#0f1115;border:1px solid var(--line);border-radius:27px 27px 0 0;padding:16px 16px 30px}
 .sheettop{display:flex;align-items:center;justify-content:space-between}.close{width:40px;height:40px;border:0;border-radius:50%;background:var(--surface3);color:var(--text);font-size:24px}
-.avatarbox{height:285px;border:1px solid var(--line);border-radius:22px;background:radial-gradient(circle at 50% 35%,#242a31,#0d0f13 67%);display:grid;place-items:center;margin:14px 0}
-.avatar{width:245px;height:260px;position:relative;transform-origin:center}
-.avatar .head{position:absolute;left:99px;top:15px;width:47px;height:47px;border-radius:50%;background:#c88f6a;box-shadow:inset -5px -4px 0 rgba(0,0,0,.08)}
-.avatar .body{position:absolute;left:92px;top:67px;width:61px;height:103px;border-radius:26px 26px 18px 18px;background:#72a9e6;transform-origin:50% 8%}
-.avatar .arm,.avatar .leg{position:absolute;border-radius:13px;background:#c88f6a;transform-origin:50% 10px}
-.avatar .arm{width:18px;height:92px;top:76px}.avatar .leg{width:21px;height:104px;top:163px}
-.avatar .arm.l{left:73px;transform:rotate(25deg)}.avatar .arm.r{left:153px;transform:rotate(-25deg)}
-.avatar .leg.l{left:98px;transform:rotate(7deg)}.avatar .leg.r{left:126px;transform:rotate(-7deg)}
-.avatar .shoe{position:absolute;top:258px;width:47px;height:16px;border-radius:12px;background:#eceff4}.shoe.l{left:72px}.shoe.r{left:126px}
+.avatarbox{height:300px;border:1px solid var(--line);border-radius:22px;background:radial-gradient(circle at 50% 30%,#2a3038,#0b0d11 70%);display:grid;place-items:center;margin:14px 0;perspective:900px;overflow:hidden}
+.avatar{width:250px;height:275px;position:relative;transform-style:preserve-3d;transform-origin:center;filter:drop-shadow(0 18px 14px rgba(0,0,0,.45))}
+.avatar .head{
+  position:absolute;left:101px;top:12px;width:48px;height:53px;border-radius:46% 46% 44% 44%;
+  background:radial-gradient(circle at 35% 28%,#efc09b 0 14%,#c88962 52%,#8f553d 100%);
+  box-shadow:inset -7px -5px 8px rgba(70,30,20,.28),inset 5px 4px 8px rgba(255,240,220,.22);
+  transform:translateZ(18px);z-index:8;
+}
+.avatar .head:before{content:"";position:absolute;left:8px;top:17px;width:6px;height:5px;border-radius:50%;background:#33231e;box-shadow:25px 0 #33231e}
+.avatar .head:after{content:"";position:absolute;left:17px;top:31px;width:15px;height:6px;border-bottom:2px solid rgba(75,35,25,.55);border-radius:50%}
+.avatar .neck{position:absolute;left:114px;top:57px;width:22px;height:24px;border-radius:9px;background:linear-gradient(90deg,#8f553d,#d49a70 45%,#9b5f44);transform:translateZ(7px);z-index:6}
+.avatar .body{
+  position:absolute;left:88px;top:69px;width:70px;height:106px;border-radius:27px 27px 20px 20px;
+  background:linear-gradient(105deg,#365f93 0%,#75b1ef 38%,#4c7fbd 65%,#28496f 100%);
+  box-shadow:inset 8px 0 12px rgba(255,255,255,.12),inset -10px 0 14px rgba(0,0,0,.28),0 8px 8px rgba(0,0,0,.18);
+  transform-origin:50% 9%;transform-style:preserve-3d;z-index:5;
+}
+.avatar .body:after{content:"";position:absolute;left:18px;top:0;width:10px;height:100%;background:rgba(255,255,255,.06);border-radius:50%}
+.avatar .arm,.avatar .leg{position:absolute;border-radius:14px;background:linear-gradient(90deg,#874d38 0%,#d69a70 42%,#a76449 75%,#70402f 100%);transform-origin:50% 10px;box-shadow:inset 3px 0 5px rgba(255,240,220,.16),inset -4px 0 6px rgba(45,15,10,.28);transform-style:preserve-3d}
+.avatar .arm{width:20px;height:94px;top:78px;z-index:4}.avatar .leg{width:22px;height:108px;top:166px;z-index:3}
+.avatar .arm.l{left:68px;transform:rotate(24deg) translateZ(2px)}.avatar .arm.r{left:158px;transform:rotate(-24deg) translateZ(2px)}
+.avatar .leg.l{left:97px;transform:rotate(7deg) translateZ(1px)}.avatar .leg.r{left:130px;transform:rotate(-7deg) translateZ(1px)}
+.avatar .shoe{position:absolute;top:265px;width:49px;height:17px;border-radius:12px 15px 8px 8px;background:linear-gradient(90deg,#bfc7d2,#f6f8fb 45%,#9aa4b1);box-shadow:0 5px 5px rgba(0,0,0,.28);z-index:2}
+.avatar .shoe.l{left:71px;transform:rotate(-3deg) translateZ(2px)}.avatar .shoe.r{left:128px;transform:rotate(3deg) translateZ(2px)}
+.avatar .floor{position:absolute;left:30px;top:260px;width:190px;height:18px;border-radius:50%;background:radial-gradient(ellipse,rgba(165,242,107,.14),rgba(0,0,0,0) 70%);transform:rotateX(70deg) translateZ(-20px)}
 .avatar.jumping .arm.l{animation:jal .75s infinite alternate}.avatar.jumping .arm.r{animation:jar .75s infinite alternate}
 .avatar.jumping .leg.l{animation:jll .75s infinite alternate}.avatar.jumping .leg.r{animation:jlr .75s infinite alternate}
+.avatar.jumping{animation:jumpBody .75s infinite alternate}
 .avatar.squat .body{animation:sqt .95s infinite alternate}.avatar.squat .leg.l{animation:sql .95s infinite alternate}.avatar.squat .leg.r{animation:sqr .95s infinite alternate}
-.avatar.pushup,.avatar.plank,.avatar.mountain{transform:rotate(72deg) scale(.83)}
-.avatar.pushup .body{animation:pt .9s infinite alternate}
-.avatar.mountain .leg.l{animation:ml .45s infinite alternate}.avatar.mountain .leg.r{animation:mr .45s infinite alternate}
+.avatar.pushup,.avatar.plank,.avatar.mountain{transform:rotateY(-8deg) rotateZ(72deg) scale(.82)}
+.avatar.pushup .body{animation:pt .9s infinite alternate}.avatar.mountain .leg.l{animation:ml .45s infinite alternate}.avatar.mountain .leg.r{animation:mr .45s infinite alternate}
 .avatar.lunge .leg.l{animation:ll 1s infinite alternate}.avatar.lunge .leg.r{animation:lr 1s infinite alternate}
-.avatar.bridge .body{animation:bt .9s infinite alternate}.avatar.wall{transform:translateY(24px)}
-.avatar.twist .body{animation:tw .9s infinite alternate}
-.avatar.march .leg.l{animation:mlg .5s infinite alternate}.avatar.march .leg.r{animation:mrg .5s infinite alternate}
+.avatar.bridge .body{animation:bt .9s infinite alternate}.avatar.wall{transform:rotateY(-7deg) translateY(24px)}
+.avatar.twist .body{animation:tw .9s infinite alternate}.avatar.march .leg.l{animation:mlg .5s infinite alternate}.avatar.march .leg.r{animation:mrg .5s infinite alternate}
 .avatar.stretch .arm.l{transform:rotate(78deg)}.avatar.stretch .arm.r{transform:rotate(-78deg)}
-@keyframes jal{to{transform:rotate(145deg)}}@keyframes jar{to{transform:rotate(-145deg)}}@keyframes jll{to{transform:rotate(-25deg)}}@keyframes jlr{to{transform:rotate(25deg)}}
-@keyframes sqt{to{transform:translateY(34px) rotate(8deg)}}@keyframes sql{to{transform:rotate(35deg)}}@keyframes sqr{to{transform:rotate(-35deg)}}
-@keyframes pt{to{transform:translateY(30px)}}@keyframes ml{to{transform:rotate(52deg)}}@keyframes mr{to{transform:rotate(-45deg)}}
-@keyframes ll{to{transform:rotate(35deg)}}@keyframes lr{to{transform:rotate(-52deg)}}@keyframes bt{to{transform:translateY(-35px) rotate(-8deg)}}
-@keyframes tw{to{transform:rotate(20deg)}}@keyframes mlg{to{transform:rotate(-40deg)}}@keyframes mrg{to{transform:rotate(40deg)}}
+@keyframes jal{to{transform:rotate(145deg) translateZ(2px)}}@keyframes jar{to{transform:rotate(-145deg) translateZ(2px)}}
+@keyframes jll{to{transform:rotate(-25deg) translateZ(1px)}}@keyframes jlr{to{transform:rotate(25deg) translateZ(1px)}}
+@keyframes jumpBody{to{transform:translateY(-12px) rotateY(-3deg)}}@keyframes sqt{to{transform:translateY(34px) rotateX(-4deg) rotateZ(8deg)}}
+@keyframes sql{to{transform:rotate(35deg)}}@keyframes sqr{to{transform:rotate(-35deg)}}@keyframes pt{to{transform:translateY(30px)}}
+@keyframes ml{to{transform:rotate(52deg)}}@keyframes mr{to{transform:rotate(-45deg)}}@keyframes ll{to{transform:rotate(35deg)}}
+@keyframes lr{to{transform:rotate(-52deg)}}@keyframes bt{to{transform:translateY(-35px) rotate(-8deg)}}@keyframes tw{to{transform:rotateY(24deg) rotateZ(6deg)}}
+@keyframes mlg{to{transform:rotate(-40deg)}}@keyframes mrg{to{transform:rotate(40deg)}}
 .timer{text-align:center;padding:7px 0}.time{font-size:58px;font-weight:900;letter-spacing:-2px}
 .timer button{margin:3px}.go{background:var(--accent)!important;color:var(--accentText)!important;border-color:var(--accent)!important;font-weight:900}
 .coach{padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:17px;line-height:1.5;font-size:13px}
@@ -202,7 +219,7 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0}
   <div class="sheet">
     <div class="sheettop"><div><div class="eyebrow">Exercise demo</div><h2 id="exTitle"></h2></div><button class="close" onclick="closeModal('exerciseModal')">×</button></div>
     <div class="avatarbox"><div class="avatar" id="avatar">
-      <div class="head"></div><div class="body"></div><div class="arm l"></div><div class="arm r"></div>
+      <div class="floor"></div><div class="head"></div><div class="neck"></div><div class="body"></div><div class="arm l"></div><div class="arm r"></div>
       <div class="leg l"></div><div class="leg r"></div><div class="shoe l"></div><div class="shoe r"></div>
     </div></div>
     <div class="coach" id="exCoach"></div>
@@ -219,7 +236,7 @@ h2{font-size:21px;letter-spacing:-.4px;margin:0}
     <div style="margin:12px 0"><div class="row between"><span class="mini" id="sessionProgressText"></span><span class="pill" id="sessionTarget"></span></div><div class="progressbar" style="margin-top:7px"><div id="sessionBar"></div></div></div>
     <div class="queue" id="queue"></div>
     <div class="avatarbox"><div class="avatar" id="sessionAvatar">
-      <div class="head"></div><div class="body"></div><div class="arm l"></div><div class="arm r"></div>
+      <div class="floor"></div><div class="head"></div><div class="neck"></div><div class="body"></div><div class="arm l"></div><div class="arm r"></div>
       <div class="leg l"></div><div class="leg r"></div><div class="shoe l"></div><div class="shoe r"></div>
     </div></div>
     <div class="coach" id="sessionCoach"></div>
@@ -267,9 +284,26 @@ let session=null, sessionTimer=null, sessionSeconds=0, demoTimer=null, demoSecon
 
 function getData(){return JSON.parse(localStorage.getItem("zeekfit")||'{"sessions":[],"xp":0,"progress":{},"audio":true,"weight":"","energy":5}')}
 function saveData(d){localStorage.setItem("zeekfit",JSON.stringify(d))}
-function today(){return new Date().toISOString().slice(0,10)}
-function dayNum(){let d=new Date().getDay();return d===0?7:d}
-function monday(){let d=new Date();let n=d.getDay()||7;d.setDate(d.getDate()-n+1);return d.toISOString().slice(0,10)}
+function lagosParts(){
+ const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Lagos",year:"numeric",month:"2-digit",day:"2-digit",weekday:"short"}).formatToParts(new Date());
+ const get=k=>parts.find(p=>p.type===k)?.value;
+ return {year:Number(get("year")),month:Number(get("month")),day:Number(get("day")),weekday:get("weekday")};
+}
+function today(){
+ const p=lagosParts();
+ return `${p.year}-${String(p.month).padStart(2,"0")}-${String(p.day).padStart(2,"0")}`;
+}
+function dayNum(){
+ const map={Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6,Sun:7};
+ return map[lagosParts().weekday];
+}
+function monday(){
+ const p=lagosParts();
+ const d=new Date(Date.UTC(p.year,p.month-1,p.day));
+ const weekday=dayNum();
+ d.setUTCDate(d.getUTCDate()-(weekday-1));
+ return d.toISOString().slice(0,10);
+}
 function datesThisWeek(){let m=new Date(monday()+"T00:00:00");return [0,1,3,5].map(x=>{let d=new Date(m);d.setDate(d.getDate()+x);return d.toISOString().slice(0,10)})}
 function streak(){
  const s=getData().sessions.map(x=>x.date).sort().reverse(); if(!s.length)return 0;
