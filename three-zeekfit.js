@@ -1,122 +1,217 @@
-// ZeekFit 3D beta: replaces the existing exercise avatar with a real Mixamo
-// FBX viewer when the model files are present, while leaving the existing app
-// as a fallback if they are not yet uploaded.
+// ZeekFit 3D beta: loads the published Mixamo character and animation
+// from the GitHub release and replaces the old CSS exercise avatar.
 (async () => {
+  // Published release assets. Keeping these outside the main HTML lets us
+  // update the 3D trainer without rewriting the large app file.
+  const CHARACTER_URL = 'https://github.com/ObikeZeek/ZeekFit/releases/download/3d-beta/Ch31_nonPBR.fbx';
+  const PUSHUP_URL = 'https://github.com/ObikeZeek/ZeekFit/releases/download/3d-beta/Push.Up.1.fbx';
+
   const loadThree = async () => {
-    const three = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js');
+    const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js');
     const { FBXLoader } = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/FBXLoader.js');
     const { OrbitControls } = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js');
-    return { THREE: three, FBXLoader, OrbitControls };
-  };
-
-  const makePanel = (modal) => {
-    if (!modal || modal.dataset.zeek3d) return null;
-    const avatar = modal.querySelector('.avatarbox');
-    if (!avatar) return null;
-    modal.dataset.zeek3d = '1';
-    avatar.innerHTML = '<div class="zeek3d-status">Loading 3D trainer…</div><canvas class="zeek3d-canvas"></canvas>';
-    avatar.style.position = 'relative';
-    const canvas = avatar.querySelector('canvas');
-    canvas.style.cssText = 'width:100%;height:100%;display:block';
-    const badge = avatar.querySelector('.zeek3d-status');
-    badge.style.cssText = 'position:absolute;z-index:2;left:12px;top:12px;background:rgba(8,9,11,.78);border:1px solid #2a2f38;padding:7px 10px;border-radius:11px;font-size:12px;color:#bfc7d2';
-    return { canvas, badge };
+    return { THREE, FBXLoader, OrbitControls };
   };
 
   let libs;
-  try { libs = await loadThree(); } catch (_) { return; }
+  try {
+    libs = await loadThree();
+  } catch (error) {
+    console.error('ZeekFit 3D: Three.js failed to load.', error);
+    return;
+  }
+
   const { THREE, FBXLoader, OrbitControls } = libs;
   const viewers = new WeakMap();
+
+  // Create or reuse the canvas inside an exercise/session avatar panel.
+  const makePanel = (modal) => {
+    if (!modal) return null;
+    const avatar = modal.querySelector('.avatarbox');
+    if (!avatar) return null;
+
+    let canvas = avatar.querySelector('.zeek3d-canvas');
+    let badge = avatar.querySelector('.zeek3d-status');
+
+    if (!canvas) {
+      avatar.innerHTML = '';
+      avatar.style.position = 'relative';
+      badge = document.createElement('div');
+      badge.className = 'zeek3d-status';
+      badge.style.cssText = 'position:absolute;z-index:2;left:12px;top:12px;background:rgba(8,9,11,.82);border:1px solid #2a2f38;padding:7px 10px;border-radius:11px;font-size:12px;color:#bfc7d2';
+      badge.textContent = 'Loading 3D trainer…';
+      canvas = document.createElement('canvas');
+      canvas.className = 'zeek3d-canvas';
+      canvas.style.cssText = 'width:100%;height:100%;display:block';
+      avatar.appendChild(badge);
+      avatar.appendChild(canvas);
+    }
+
+    return { canvas, badge };
+  };
 
   async function show3D(modal, animationName) {
     const panel = makePanel(modal);
     if (!panel) return;
+
     const { canvas, badge } = panel;
     const old = viewers.get(modal);
     if (old) old.dispose();
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x08090b);
+
     const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 1000);
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: false,
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+
     const controls = new OrbitControls(camera, canvas);
     controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.minDistance = 0.5;
+    controls.maxDistance = 20;
+
     scene.add(new THREE.HemisphereLight(0xffffff, 0x20242b, 2.2));
     const key = new THREE.DirectionalLight(0xffffff, 3);
     key.position.set(4, 7, 5);
     scene.add(key);
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(5, 64), new THREE.MeshStandardMaterial({ color:0x15191f, roughness:.9 }));
-    floor.rotation.x = -Math.PI/2;
+
+    const floor = new THREE.Mesh(
+      new THREE.CircleGeometry(5, 64),
+      new THREE.MeshStandardMaterial({ color: 0x15191f, roughness: 0.9 })
+    );
+    floor.rotation.x = -Math.PI / 2;
     scene.add(floor);
 
     const resize = () => {
-      const r = canvas.getBoundingClientRect();
-      renderer.setSize(r.width, r.height, false);
-      camera.aspect = r.width / Math.max(r.height, 1);
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(rect.width, 1);
+      const height = Math.max(rect.height, 1);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
     };
     resize();
-    window.addEventListener('resize', resize);
+
     let disposed = false;
     let mixer = null;
+    let currentAction = null;
     const clock = new THREE.Clock();
     const loader = new FBXLoader();
 
+    const loadModel = (url) => new Promise((resolve, reject) => {
+      loader.load(url, resolve, undefined, reject);
+    });
+
     badge.textContent = 'Loading Mixamo character…';
-    loader.load('./models/character.fbx', model => {
-      model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+
+    try {
+      const model = await loadModel(CHARACTER_URL);
+      if (disposed) return;
+
+      model.traverse((object) => {
+        if (object.isMesh) {
+          object.castShadow = true;
+          object.receiveShadow = true;
+        }
+      });
       scene.add(model);
+
+      // Normalize the character to fit the existing ZeekFit exercise window.
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
-      const max = Math.max(size.x, size.y, size.z);
+      const maxDimension = Math.max(size.x, size.y, size.z) || 1;
+
       model.position.x -= center.x;
       model.position.z -= center.z;
       model.position.y -= box.min.y;
-      camera.position.set(max * 2.5, max * 1.1, max * 2.5);
-      controls.target.set(0, max * .45, 0);
+
+      const scale = 2.2 / maxDimension;
+      model.scale.setScalar(scale);
+
+      camera.position.set(2.8, 1.5, 3.2);
+      controls.target.set(0, 1.0, 0);
       controls.update();
-      badge.textContent = animationName ? 'Loading push-up animation…' : '3D trainer loaded';
 
       if (animationName === 'pushup') {
-        loader.load('./models/pushup.fbx', animModel => {
-          const clip = animModel.animations && animModel.animations[0];
-          if (!clip) { badge.textContent = 'Character loaded · no animation clip'; return; }
+        badge.textContent = 'Loading push-up animation…';
+        const animationModel = await loadModel(PUSHUP_URL);
+        if (disposed) return;
+
+        const clip = animationModel.animations?.[0];
+        if (!clip) {
+          badge.textContent = 'Character loaded · no animation clip found';
+        } else {
           mixer = new THREE.AnimationMixer(model);
-          const action = mixer.clipAction(clip);
-          action.setLoop(THREE.LoopRepeat, Infinity);
-          action.play();
+          currentAction = mixer.clipAction(clip);
+          currentAction.reset().setLoop(THREE.LoopRepeat, Infinity).play();
           badge.textContent = '3D push-up trainer ready';
-        }, undefined, () => { badge.textContent = 'Character loaded · animation unavailable'; });
+        }
+      } else {
+        badge.textContent = '3D trainer loaded';
       }
-    }, undefined, () => {
-      badge.textContent = '3D asset not installed — using existing fallback';
-    });
+    } catch (error) {
+      console.error('ZeekFit 3D asset load failed.', error);
+      badge.textContent = '3D asset could not be loaded';
+    }
 
     const tick = () => {
       if (disposed) return;
       requestAnimationFrame(tick);
-      if (mixer) mixer.update(clock.getDelta());
+      const delta = Math.min(clock.getDelta(), 0.05);
+      if (mixer) mixer.update(delta);
       controls.update();
       renderer.render(scene, camera);
     };
     tick();
-    viewers.set(modal, { dispose() { disposed = true; renderer.dispose(); controls.dispose(); window.removeEventListener('resize', resize); } });
+
+    const onResize = () => resize();
+    window.addEventListener('resize', onResize);
+
+    viewers.set(modal, {
+      dispose() {
+        disposed = true;
+        if (currentAction) currentAction.stop();
+        if (mixer) mixer.stopAllAction();
+        renderer.dispose();
+        controls.dispose();
+        window.removeEventListener('resize', onResize);
+        scene.traverse((object) => {
+          if (object.geometry) object.geometry.dispose();
+          if (object.material) {
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            materials.forEach((material) => material.dispose());
+          }
+        });
+      }
+    });
   }
 
+  // Watch the existing app's modal state. The main app stays untouched.
   const observer = new MutationObserver(() => {
-    const ex = document.getElementById('exerciseModal');
-    if (ex?.classList.contains('open')) {
+    const exerciseModal = document.getElementById('exerciseModal');
+    if (exerciseModal?.classList.contains('open')) {
       const title = document.getElementById('exTitle')?.textContent || '';
-      show3D(ex, /push-up/i.test(title) ? 'pushup' : null);
+      show3D(exerciseModal, /push-up/i.test(title) ? 'pushup' : null);
     }
-    const session = document.getElementById('workoutModal');
-    if (session?.classList.contains('open')) {
+
+    const workoutModal = document.getElementById('workoutModal');
+    if (workoutModal?.classList.contains('open')) {
       const title = document.getElementById('sessionTitle')?.textContent || '';
-      show3D(session, /push-up/i.test(title) ? 'pushup' : null);
+      show3D(workoutModal, /push-up/i.test(title) ? 'pushup' : null);
     }
   });
-  observer.observe(document.body, { subtree:true, attributes:true, attributeFilter:['class'] });
+
+  observer.observe(document.body, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class']
+  });
 })();
