@@ -2,8 +2,10 @@
   "name": "ZeekFit",
   "short_name": "ZeekFit",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#08090b",
   "theme_color": "#08090b",
-  "description": "Zeek's personal bodyweight workout coach."
+  "description": "Zeek's personal bodyweight workout coach.",
+  "icons": []
 }
